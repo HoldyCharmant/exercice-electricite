@@ -26,5 +26,19 @@ st.markdown(
     "L'objectif : comprendre si la consommation suit la **chaleur** ou les **heures de courant**."
 )
 
-st.write(f"Le fichier propre compte {len(donnees)} lignes.")
-st.dataframe(donnees.head(10), hide_index=True)
+# --- Filtres sidebar ---
+communes_disponibles = sorted(donnees["commune"].unique())
+communes_choisies = st.sidebar.multiselect(
+    "Communes", communes_disponibles, default=communes_disponibles
+)
+annee_choisie = st.sidebar.selectbox("Année", [2025, 2024])
+
+if not communes_choisies:
+    st.warning("Veuillez sélectionner au moins une commune dans la barre latérale.")
+    st.stop()
+
+filtrees = donnees[donnees["commune"].isin(communes_choisies)]
+filtrees = filtrees[filtrees["annee"] == annee_choisie]
+
+st.write(f"Le fichier filtré compte {len(filtrees)} lignes.")
+st.dataframe(filtrees.head(10), hide_index=True)
