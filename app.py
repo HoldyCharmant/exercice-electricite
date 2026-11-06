@@ -40,5 +40,15 @@ if not communes_choisies:
 filtrees = donnees[donnees["commune"].isin(communes_choisies)]
 filtrees = filtrees[filtrees["annee"] == annee_choisie]
 
-st.write(f"Le fichier filtré compte {len(filtrees)} lignes.")
+# --- 3 indicateurs ---
+col1, col2, col3 = st.columns(3)
+
+conso_totale = filtrees["kwh"].sum() / 1_000_000
+kwh_par_abonne = filtrees["kwh_par_abonne"].mean()
+heures_moy = filtrees["heures_courant"].mean()
+
+col1.metric("Consommation totale", f"{conso_totale:.2f} M kWh")
+col2.metric("kWh par abonné", f"{kwh_par_abonne:.1f}")
+col3.metric("Heures de courant (moy.)", f"{heures_moy:.1f} h")
+
 st.dataframe(filtrees.head(10), hide_index=True)
