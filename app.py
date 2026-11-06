@@ -42,13 +42,58 @@ filtrees = filtrees[filtrees["annee"] == annee_choisie]
 
 # --- 3 indicateurs ---
 col1, col2, col3 = st.columns(3)
+col1.metric("Consommation totale", f"{filtrees['kwh'].sum() / 1_000_000:.2f} M kWh")
+col2.metric("kWh par abonné", f"{filtrees['kwh_par_abonne'].mean():.1f}")
+col3.metric("Heures de courant (moy.)", f"{filtrees['heures_courant'].mean():.1f} h")
 
-conso_totale = filtrees["kwh"].sum() / 1_000_000
-kwh_par_abonne = filtrees["kwh_par_abonne"].mean()
-heures_moy = filtrees["heures_courant"].mean()
+# --- 5 onglets ---
+onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs([
+    "Quartiers", "Évolution", "Chaleur ou courant", "Coupures", "Hors norme"
+])
 
-col1.metric("Consommation totale", f"{conso_totale:.2f} M kWh")
-col2.metric("kWh par abonné", f"{kwh_par_abonne:.1f}")
-col3.metric("Heures de courant (moy.)", f"{heures_moy:.1f} h")
+# Onglet 1 : consommation par type
+with onglet1:
+    st.subheader("Consommation par abonné selon le type de quartier")
+    par_type = filtrees.groupby("type")["kwh_par_abonne"].mean().round(1)
+    st.bar_chart(par_type, horizontal=True)
+    st.write(f"Commercial : {par_type.get('Commercial', 0):.1f} kWh/abonné, "
+             f"Résidentiel : {par_type.get('Résidentiel', 0):.1f} kWh/abonné.")
 
-st.dataframe(filtrees.head(10), hide_index=True)
+# Onglet 2 : évolution par commune
+with onglet2:
+    st.subheader("Évolution mensuelle du kWh par abonné, par commune")
+    evolution = filtrees.pivot_table(index="mois", columns="commune",
+                                     values="kwh_par_abonne", aggfunc="mean")
+    st.line_chart(evolution)
+    totaux = filtrees.groupby("commune")["kwh"].sum() / 1_000_000
+    top = totaux.idxmax()
+    st.write(f"Commune la plus consommatrice en {annee_choisie} : **{top}** "
+             f"({totaux.max():.2f} M kWh).")
+
+# Onglet 3 : chaleur ou courant
+with onglet3:
+    st.subheader("Plus de courant, plus de consommation")
+    residentiel = filtrees[filtrees["type"] == "Résidentiel"]
+    st.scatter_chart(residentiel, x="heures_courant", y="kwh_par_abonne", color="commune",
+                     x_label="Heures de courant par jour", y_label="kWh par abonné")
+    courant = residentiel["heures_courant"].corr(residentiel["kwh_par_abonne"])
+    chaleur = residentiel["temperature_c"].corr(residentiel["kwh_par_abonne"])
+    st.write(f"Quartiers résidentiels : corrélation de **{courant:.2f}** avec les heures "
+             f"de courant, **{chaleur:.2f}** avec la température.")
+
+# Onglet 4 : coupures
+with onglet4:
+    st.subheader("Les coupures les plus longues")
+    medianes = filtrees.groupby("commune")["heures_courant"].median().round(1)
+    st.bar_chart(medianes, horizontal=True)
+    faibles = filtrees[filtrees["heures_courant"] < 8]
+    st.write(f"{len(faibles)} relevé(s) sous 8 heures de courant sur la période filtrée.")
+
+# Onglet 5 : hors norme
+with onglet5:
+    st.subheader("Les 5 plus grosses consommations")
+    top5 = filtrees.nlargest(5, "kwh")[["mois", "quartier", "type", "kwh"]]
+    st.dataframe(top5, hide_index=True)
+    premier = top5.iloc[0]
+    st.write(f"Le pic est à **{premier['quartier']}** en {premier['mois']} "
+             f"avec {premier['kwh']:.0f} kWh.")
