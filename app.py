@@ -51,7 +51,6 @@ onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs([
     "Quartiers", "Évolution", "Chaleur ou courant", "Coupures", "Hors norme"
 ])
 
-# Onglet 1 : consommation par type
 with onglet1:
     st.subheader("Consommation par abonné selon le type de quartier")
     par_type = filtrees.groupby("type")["kwh_par_abonne"].mean().round(1)
@@ -59,7 +58,6 @@ with onglet1:
     st.write(f"Commercial : {par_type.get('Commercial', 0):.1f} kWh/abonné, "
              f"Résidentiel : {par_type.get('Résidentiel', 0):.1f} kWh/abonné.")
 
-# Onglet 2 : évolution par commune
 with onglet2:
     st.subheader("Évolution mensuelle du kWh par abonné, par commune")
     evolution = filtrees.pivot_table(index="mois", columns="commune",
@@ -70,7 +68,6 @@ with onglet2:
     st.write(f"Commune la plus consommatrice en {annee_choisie} : **{top}** "
              f"({totaux.max():.2f} M kWh).")
 
-# Onglet 3 : chaleur ou courant
 with onglet3:
     st.subheader("Plus de courant, plus de consommation")
     residentiel = filtrees[filtrees["type"] == "Résidentiel"]
@@ -81,7 +78,6 @@ with onglet3:
     st.write(f"Quartiers résidentiels : corrélation de **{courant:.2f}** avec les heures "
              f"de courant, **{chaleur:.2f}** avec la température.")
 
-# Onglet 4 : coupures
 with onglet4:
     st.subheader("Les coupures les plus longues")
     medianes = filtrees.groupby("commune")["heures_courant"].median().round(1)
@@ -89,7 +85,6 @@ with onglet4:
     faibles = filtrees[filtrees["heures_courant"] < 8]
     st.write(f"{len(faibles)} relevé(s) sous 8 heures de courant sur la période filtrée.")
 
-# Onglet 5 : hors norme
 with onglet5:
     st.subheader("Les 5 plus grosses consommations")
     top5 = filtrees.nlargest(5, "kwh")[["mois", "quartier", "type", "kwh"]]
@@ -97,3 +92,20 @@ with onglet5:
     premier = top5.iloc[0]
     st.write(f"Le pic est à **{premier['quartier']}** en {premier['mois']} "
              f"avec {premier['kwh']:.0f} kWh.")
+
+# --- Conclusion ---
+st.markdown("---")
+st.subheader("Conclusion pour le directeur")
+st.markdown(
+    "Dans les quartiers résidentiels, la consommation par abonné suit **les heures de courant** "
+    "(corrélation de **0,76**), pas la température (**-0,15**) : on consomme l'électricité "
+    "qu'on reçoit. La plus forte hausse de 2025 est à **Cap-Haïtien (+22,5 %)**, où les coupures "
+    "restent pourtant les plus longues (médiane de **10,0 heures** de courant par jour). "
+    "Ces corrélations ne prouvent pas une cause : il faudrait des données par abonné et des "
+    "mois sans coupure pour mesurer l'effet de la chaleur."
+)
+
+# --- Données filtrées ---
+with st.expander("Voir les données filtrées"):
+    st.dataframe(filtrees, hide_index=True)
+    st.caption(f"{len(filtrees)} lignes affichées sur {len(donnees)} au total.")
